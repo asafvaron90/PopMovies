@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">PopMovies</string>
+    <string name="btn_add_to_fav">Mark As\n Favorite</string>
+    <string name="action_popular">Popular</string>
+    <string name="action_top_rated">Top Rated</string>
+    <string name="action_upcoming">Upcoming</string>
+    <string name="popular_title">Popular Movies</string>
+    <string name="top_rated_title">Top Rated Movies</string>
+    <string name="upcoming_title">Upcoming Movies</string>
+    <string name="trailer_title">Trailers:</string>
+    <bool name="isTablet">false</bool>
+</resources>
