@@ -1,5 +1,6 @@
 package com.asaf.popmovies.helpers;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
@@ -10,6 +11,8 @@ import com.android.volley.Response;
 import com.android.volley.error.VolleyError;
 import com.android.volley.request.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.asaf.popmovies.db.MoviesContract;
+import com.asaf.popmovies.fragments.MovieGridFragment;
 import com.asaf.popmovies.objects.Movie;
 import com.asaf.popmovies.objects.Trailer;
 
@@ -102,7 +105,8 @@ public class ApiHelper {
 
                                 if (results != null) {
                                     for (int i = 0; i < results.length(); i++) {
-                                        mPopularList.add(getMovie(results.getJSONObject(i)));
+                                        mPopularList.add(getMovie(MovieGridFragment.POPULAR,
+                                                results.getJSONObject(i)));
                                     }
                                 }
                             }
@@ -140,7 +144,8 @@ public class ApiHelper {
 
                                 if (results != null) {
                                     for (int i = 0; i < results.length(); i++) {
-                                        mTopRatedList.add(getMovie(results.getJSONObject(i)));
+                                        mTopRatedList.add(getMovie(MovieGridFragment.TOP_RATED,
+                                                results.getJSONObject(i)));
                                     }
                                 }
                                 Log.w(TAG, "mTopRatedList size = " + mTopRatedList.size());
@@ -180,7 +185,8 @@ public class ApiHelper {
 
                                 if (results != null) {
                                     for (int i = 0; i < results.length(); i++) {
-                                        mUpcomingList.add(getMovie(results.getJSONObject(i)));
+                                        mUpcomingList.add(getMovie(MovieGridFragment.UPCOMING,
+                                                results.getJSONObject(i)));
                                     }
                                 }
                                 Log.w(TAG, "mUpcomingList size = " + mUpcomingList.size());
@@ -202,22 +208,31 @@ public class ApiHelper {
     }
 
 
-    private Movie getMovie(JSONObject object) {
+    private Movie getMovie(int db_id, JSONObject object) {
+        ContentValues values = new ContentValues();
+
         Log.d(TAG, "getMovie: ");
         Movie movie = null;
         try {
             // movie id
             int id = 0;
-            if (object.has("id")) id = object.getInt("id");
+            if (object.has("id")) {
+                id = object.getInt("id");
+            }
 
             // title
             String title = "";
-            if (object.has("title")) title = object.getString("title");
-            else if (object.has("original_title")) title = object.getString("original_title");
+            if (object.has("title")) {
+                title = object.getString("title");
+            } else if (object.has("original_title")) {
+                title = object.getString("original_title");
+            }
 
             // info
             String overview = "";
-            if (object.has("overview")) overview = object.getString("overview");
+            if (object.has("overview")) {
+                overview = object.getString("overview");
+            }
 
             // release date
             String releaseData = "";
@@ -233,13 +248,51 @@ public class ApiHelper {
 
             // rate
             double rate = 0;
-            if (object.has("vote_average")) rate = object.getDouble("vote_average");
+            if (object.has("vote_average")) {
+                rate = object.getDouble("vote_average");
+            }
 
             String posterUrl = "";
-            if (object.has("poster_path"))
+            if (object.has("poster_path")) {
                 posterUrl = MOVIE_IMAGE_URL + object.getString("poster_path");
+            }
+
+            switch (db_id) {
+                case MovieGridFragment.POPULAR:
+                    values.put(MoviesContract.Popular.ID, id);
+                    values.put(MoviesContract.Popular.TITLE, title);
+                    values.put(MoviesContract.Popular.INFO, overview);
+                    values.put(MoviesContract.Popular.RELEASE_YEAR, releaseData);
+                    values.put(MoviesContract.Popular.RATE, rate);
+                    values.put(MoviesContract.Popular.POSTER, posterUrl);
+                    mContext.getContentResolver().insert(
+                            MoviesContract.Popular.CONTENT_URI, values);
+                    break;
+                case MovieGridFragment.TOP_RATED:
+                    values.put(MoviesContract.TopRated.ID, id);
+                    values.put(MoviesContract.TopRated.TITLE, title);
+                    values.put(MoviesContract.TopRated.INFO, overview);
+                    values.put(MoviesContract.TopRated.RELEASE_YEAR, releaseData);
+                    values.put(MoviesContract.TopRated.RATE, rate);
+                    values.put(MoviesContract.TopRated.POSTER, posterUrl);
+                    mContext.getContentResolver().insert(
+                            MoviesContract.TopRated.CONTENT_URI, values);
+                    break;
+                case MovieGridFragment.UPCOMING:
+                    values.put(MoviesContract.Upcoming.ID, id);
+                    values.put(MoviesContract.Upcoming.TITLE, title);
+                    values.put(MoviesContract.Upcoming.INFO, overview);
+                    values.put(MoviesContract.Upcoming.RELEASE_YEAR, releaseData);
+                    values.put(MoviesContract.Upcoming.RATE, rate);
+                    values.put(MoviesContract.Upcoming.POSTER, posterUrl);
+                    mContext.getContentResolver().insert(
+                            MoviesContract.Upcoming.CONTENT_URI, values);
+                    break;
+            }
 
             movie = new Movie(id, title, overview, posterUrl, releaseData, rate);
+
+            Log.i(TAG, "getMovie: Movie saved to DB");
 
         } catch (JSONException e) {
             e.printStackTrace();

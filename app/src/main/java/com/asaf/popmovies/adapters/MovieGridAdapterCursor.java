@@ -1,6 +1,7 @@
 package com.asaf.popmovies.adapters;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -11,15 +12,16 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.asaf.popmovies.R;
+import com.asaf.popmovies.db.MoviesContract;
 import com.asaf.popmovies.fragments.MovieGridFragment;
 import com.asaf.popmovies.objects.Movie;
 import com.bumptech.glide.Glide;
 
 import java.util.List;
 
-// XXX not in use
-public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.MovieViewHolder> {
-    private static final String TAG = MovieGridAdapter.class.getSimpleName();
+
+public class MovieGridAdapterCursor extends RecyclerViewCursorAdapter<MovieGridAdapterCursor.MovieViewHolder> {
+    private static final String TAG = MovieGridAdapterCursor.class.getSimpleName();
 
     private final LayoutInflater mInflater;
     private final Context mContext;
@@ -31,7 +33,8 @@ public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.Movi
         void movieClicked(Movie m);
     }
 
-    public MovieGridAdapter(Context context, RecyclerView rv, List<Movie> movieList) {
+    public MovieGridAdapterCursor(Cursor c, Context context, RecyclerView rv, List<Movie> movieList) {
+        super(c);
         Log.d(TAG, "MovieGridAdapter: ");
         this.mContext = context;
         this.mRecyclerView = rv;
@@ -41,7 +44,7 @@ public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.Movi
     }
 
     public void setListener(MovieGridFragment movieGridFragment) {
-        mListener = (MovieGridAdapterListener) movieGridFragment;
+        mListener = movieGridFragment;
     }
 
     private void initRecyclerView() {
@@ -56,20 +59,29 @@ public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.Movi
         this.notifyDataSetChanged();
     }
 
-    @Override
-    public MovieViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        return new MovieViewHolder(mInflater.inflate(R.layout.movie_grid_item, parent, false));
-    }
 
     @Override
-    public void onBindViewHolder(MovieViewHolder holder, int position) {
-        final Movie m = mMovieList.get(position);
+    public void onBindViewHolder(MovieViewHolder holder, Cursor cursor) {
+
+        int id = cursor.getInt(cursor.getColumnIndex(
+                MoviesContract.Popular.ID));
+        String title = cursor.getString(cursor.getColumnIndex(
+                MoviesContract.Popular.TITLE));
+        String info = cursor.getString(cursor.getColumnIndex(
+                MoviesContract.Popular.INFO));
+        String releaseYear = cursor.getString(cursor.getColumnIndex(
+                MoviesContract.Popular.RELEASE_YEAR));
+        int rate = cursor.getInt(cursor.getColumnIndex(
+                MoviesContract.Popular.RATE));
+        String posterUrl = cursor.getString(cursor.getColumnIndex(
+                MoviesContract.Popular.POSTER));
+
+        final Movie m = new Movie(id, title, info, posterUrl, releaseYear, rate);
 
         // load the movie poster
         Glide.with(mContext)
-                .load(m.getPosterUrl())
+                .load(posterUrl)
 //                .centerCrop()
-
                 .error(R.drawable.ic_image_broken_white_48dp)
                 .crossFade()
                 .into(holder.moviePoster);
@@ -83,10 +95,20 @@ public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.Movi
 
         // set the info fragment
         if (mContext.getResources().getBoolean(R.bool.isTablet) &&
-                position == mMovieList.size() - 1) {
+                cursor.getPosition() == mMovieList.size() - 1) {
             Log.d(TAG, "onBindViewHolder: tablet - setting info fragment");
             mListener.movieClicked(mMovieList.get(0));
         }
+    }
+
+    @Override
+    public Cursor swapCursor(Cursor newCursor) {
+        return super.swapCursor(newCursor);
+    }
+
+    @Override
+    public MovieViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        return new MovieViewHolder(mInflater.inflate(R.layout.movie_grid_item, parent, false));
     }
 
     @Override

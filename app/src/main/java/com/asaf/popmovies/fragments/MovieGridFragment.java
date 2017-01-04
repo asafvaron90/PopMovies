@@ -1,8 +1,12 @@
 package com.asaf.popmovies.fragments;
 
+import android.database.Cursor;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -10,7 +14,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.asaf.popmovies.R;
-import com.asaf.popmovies.adapters.MovieGridAdapter;
+import com.asaf.popmovies.adapters.MovieGridAdapterCursor;
+import com.asaf.popmovies.db.MoviesContract;
 import com.asaf.popmovies.helpers.ApiHelper;
 import com.asaf.popmovies.objects.Movie;
 
@@ -18,7 +23,8 @@ import com.asaf.popmovies.objects.Movie;
  * A placeholder fragment containing a simple view.
  */
 public class MovieGridFragment extends Fragment
-        implements MovieGridAdapter.MovieGridAdapterListener {
+        implements MovieGridAdapterCursor.MovieGridAdapterListener,
+        LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final String TAG = MovieGridFragment.class.getSimpleName();
     public static final int POPULAR = 0;
@@ -26,7 +32,8 @@ public class MovieGridFragment extends Fragment
     public static final int UPCOMING = 2;
 
     private RecyclerView mRvMovieGrid;
-    private MovieGridAdapter mMovieGridAdapter = null;
+    //    private MovieGridAdapter mMovieGridAdapter = null;
+    private MovieGridAdapterCursor mMovieGridAdapter = null;
 
     public static MovieGridFragment newInstance() {
         return new MovieGridFragment();
@@ -36,21 +43,15 @@ public class MovieGridFragment extends Fragment
     }
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
-
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView: ");
         View root = inflater.inflate(R.layout.fragment_grid, container, false);
+        root.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         if (savedInstanceState == null) {
             mRvMovieGrid = (RecyclerView) root.findViewById(R.id.rv_movie_grid);
-            mMovieGridAdapter = new MovieGridAdapter(getContext(), mRvMovieGrid,
-                    ApiHelper.getInstance().getPopularMoviesList());
-            mMovieGridAdapter.setListener(this);
+            // init adapter when loader is finished
         }
         return root;
     }
@@ -59,6 +60,12 @@ public class MovieGridFragment extends Fragment
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         Log.d(TAG, "onViewCreated: ");
         super.onViewCreated(view, savedInstanceState);
+    }
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        getLoaderManager().initLoader(POPULAR, null, this);
     }
 
     @Override
@@ -78,37 +85,64 @@ public class MovieGridFragment extends Fragment
         }
     }
 
-    @Override
-    public void onPause() {
-        super.onPause();
-        Log.d(TAG, "onPause: ");
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        Log.d(TAG, "onResume: ");
-
-    }
-
     public void setData(int data) {
         switch (data) {
             case POPULAR:
-                mMovieGridAdapter = new MovieGridAdapter(getContext(), mRvMovieGrid,
-                        ApiHelper.getInstance().getPopularMoviesList());
+                getLoaderManager().restartLoader(POPULAR, null, this);
                 break;
 
             case TOP_RATED:
-                mMovieGridAdapter = new MovieGridAdapter(getContext(), mRvMovieGrid,
-                        ApiHelper.getInstance().getTopRatedMoviesList());
+                getLoaderManager().restartLoader(TOP_RATED, null, this);
                 break;
 
             case UPCOMING:
-                mMovieGridAdapter = new MovieGridAdapter(getContext(), mRvMovieGrid,
-                        ApiHelper.getInstance().getUpcomingMoviesList());
+                getLoaderManager().restartLoader(UPCOMING, null, this);
                 break;
         }
-        mMovieGridAdapter.setListener(this);
     }
 
-}
+        @Override
+        public Loader<Cursor> onCreateLoader ( int id, Bundle args){
+            Log.d(TAG, "onCreateLoader: id = " + id);
+
+            switch (id) {
+                case POPULAR:
+                    return new CursorLoader(getActivity(),
+                            MoviesContract.Popular.CONTENT_URI, null, null, null,
+                            MoviesContract.Popular._ID + " asc");
+                case TOP_RATED:
+                    return new CursorLoader(getActivity(),
+                            MoviesContract.TopRated.CONTENT_URI, null, null, null,
+                            MoviesContract.TopRated._ID + " asc");
+
+                case UPCOMING:
+                    return new CursorLoader(getActivity(),
+                            MoviesContract.Upcoming.CONTENT_URI, null, null, null,
+                            MoviesContract.Upcoming._ID + " asc");
+                default:
+                    return new CursorLoader(getActivity(),
+                            MoviesContract.Popular.CONTENT_URI, null, null, null,
+                            MoviesContract.Popular._ID + " asc");
+            }
+        }
+
+        @Override
+        public void onLoadFinished (Loader < Cursor > loader, Cursor c){
+            Log.d(TAG, "onLoadFinished: ");
+            if (mMovieGridAdapter == null) {
+                mMovieGridAdapter = new MovieGridAdapterCursor(c, getContext(), mRvMovieGrid,
+                        ApiHelper.getInstance().getPopularMoviesList());
+                mMovieGridAdapter.setListener(this);
+            }
+
+            mMovieGridAdapter.swapCursor(c);
+        }
+
+        @Override
+        public void onLoaderReset (Loader < Cursor > loader) {
+            Log.d(TAG, "onLoaderReset: ");
+            //If the loader is reset, we need to clear out the
+            //current cursor from the adapter.
+            mMovieGridAdapter.swapCursor(null);
+        }
+    }
